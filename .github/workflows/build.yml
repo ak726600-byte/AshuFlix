@@ -1,0 +1,46 @@
+name: Build Ashu Flix APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.9
+
+      - name: Create signing key
+        run: |
+          mkdir -p "$RUNNER_TEMP/ks"
+          keytool -genkeypair -keystore "$RUNNER_TEMP/ks/ashu.jks" -alias ashu \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass ashuflix123 -keypass ashuflix123 -dname "CN=Ashu Flix"
+          echo "ASHU_KEYSTORE=$RUNNER_TEMP/ks/ashu.jks" >> $GITHUB_ENV
+          echo "ASHU_STORE_PASSWORD=ashuflix123" >> $GITHUB_ENV
+          echo "ASHU_KEY_ALIAS=ashu" >> $GITHUB_ENV
+          echo "ASHU_KEY_PASSWORD=ashuflix123" >> $GITHUB_ENV
+
+      - name: Build release APK
+        run: gradle assembleRelease --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: AshuFlix-release
+          path: app/build/outputs/apk/release/*.apk
